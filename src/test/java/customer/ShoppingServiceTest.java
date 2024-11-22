@@ -13,6 +13,7 @@ import shopping.Cart;
 import shopping.ShoppingService;
 import shopping.ShoppingServiceImpl;
 
+
 /**
  * тестирует ShoppingService
  */
@@ -21,6 +22,7 @@ public class ShoppingServiceTest {
 
     private final ProductDao productDaoMock;
     private final ShoppingService shoppingService;
+    private final Customer customer = new Customer(0, "11-11-11");
 
     /**
      * Конструктор, создающий mock объект и сервивс
@@ -37,7 +39,6 @@ public class ShoppingServiceTest {
      */
     @Test
     public void testCorrectBuy() throws BuyException {
-        Customer customer = new Customer(0, "11-11-11");
         Cart cart = shoppingService.getCart(customer);
         Product product = new Product("milk", 3);
 
@@ -56,7 +57,6 @@ public class ShoppingServiceTest {
      */
     @Test
     public void testBuyProductsFromEmptyCart() throws BuyException {
-        Customer customer = new Customer(0, "11-11-11");
         Cart cart = shoppingService.getCart(customer);
 
         boolean answer = shoppingService.buy(cart);
@@ -67,12 +67,11 @@ public class ShoppingServiceTest {
     }
 
     /**
-     * Проверяет корректность работы методов buy и validateCanBuy при неправильных данных
+     * Проверяет корректность работы метода buy, когда в наличие нет нужного количества товара
      * (когда в корзине продуктов больше, чем есть в наличии)
      */
     @Test
     public void testThrowExceptionWhenBuyInvalid() {
-        Customer customer = new Customer(0, "11-11-11");
         Cart cart = shoppingService.getCart(customer);
         Product product = new Product("milk", 3);
 
@@ -88,12 +87,56 @@ public class ShoppingServiceTest {
     }
 
     /**
-     * Проверяет корректность получения корзины
+     * Проверяет, что при получении корзины возвращается одна и та же корзина
      */
     @Test
     public void testGetCart() {
-        // В методе отсутствует какая-либо логика, требующая проверки.
-        // Метод только создает экземпляр класса Cart.
+        Cart cart1 = shoppingService.getCart(customer);
+        Cart cart2 = shoppingService.getCart(customer);
+        Assertions.assertEquals(cart1, cart2, "Метод возвращает разные корзины");
+    }
+
+    /**
+     * Проверяет, что корзина пуста после покупки
+     */
+    @Test
+    public void testCartIsEmptyAfterBuy() throws BuyException {
+        Cart cart = shoppingService.getCart(customer);
+        Product product1 = new Product("milk", 3);
+        Product product2 = new Product("bread", 2);
+
+        cart.add(product1, 2);
+        cart.add(product2, 1);
+        shoppingService.buy(cart);
+
+        Assertions.assertEquals(0, cart.getProducts().size());
+    }
+
+    /**
+     * Проверяет, что возможно купить последний пробукт
+     */
+    @Test
+    public void testBuyLastProduct() throws BuyException {
+        Cart cart = shoppingService.getCart(customer);
+        Product product = new Product("milk", 1);
+        cart.add(product, 1);
+        boolean answer = shoppingService.buy(cart);
+
+        Assertions.assertTrue(answer);
+        Mockito.verify(productDaoMock, Mockito.times(1))
+                .save(product);
+    }
+
+    /**
+     * Проверяет, что нелья добавить в корзину отрицательное количество продуктов
+     */
+    @Test
+    public void testAddNegativeNumberOfProducts() {
+        Cart cart = shoppingService.getCart(customer);
+        Product product = new Product("milk", 3);
+        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> cart.add(product, -2));
+        Assertions.assertEquals("Неверный формат числа продуктов", exception.getMessage());
     }
 
     /**
@@ -102,21 +145,6 @@ public class ShoppingServiceTest {
     @Test
     public void getAllProducts() {
         // Метод является делегирующим и не добавляет никакой собственной логики.
-        // Если проверять наличие обращений к методу getAll():
-        // Mockito.verify(productDaoMock, Mockito.times(1)).getAll();
-        // то результат всегда будет положительный.
-        // Если задавать через Mockito правило по типу:
-        //
-        // List<Product> products = List.of(
-        //          new Product("milk", 3),
-        //          new Product("bread", 2));
-        // Mockito.when(productDaoMock.getAll()).thenReturn(products);
-        //
-        // Assertions.assertEquals(products, shoppingService.getAllProducts());
-        //
-        // то результат так же всегда будет положительный,
-        // так как мы сравниваем возвращенный мок со значением, которое мы сами и задали.
-        // Отсутствует логика для тестирования
     }
 
     /**
