@@ -34,6 +34,74 @@ public class ShoppingServiceTest {
     }
 
     /**
+     * Проверяет, что при получении корзины возвращается одна и та же корзина
+     */
+    @Test
+    public void testGetCart() {
+        Cart cart1 = shoppingService.getCart(customer);
+        Cart cart2 = shoppingService.getCart(customer);
+        Assertions.assertEquals(cart1, cart2, "Метод возвращает разные корзины");
+    }
+
+    /**
+     * Проверяет, что нельзя добавить в корзину больше товаров,чем есть в наличии
+     */
+    @Test
+    public void testAddMoreProductsToCartThanAvailable() {
+        Cart cart = shoppingService.getCart(customer);
+        Product product = new Product("milk", 2);
+
+        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> cart.add(product, 5));
+        Assertions.assertEquals("Невозможно добавить товар 'milk' в корзину, т.к. нет необходимого количества товаров",
+                exception.getMessage());
+    }
+
+    /**
+     * Проверяет, что нелья добавить в корзину отрицательное количество продуктов
+     */
+    @Test
+    public void testAddNegativeNumberOfProducts() {
+        Cart cart = shoppingService.getCart(customer);
+        Product product = new Product("milk", 3);
+        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> cart.add(product, -2));
+        Assertions.assertEquals("Количество добавленного товара не может быть отрицательным",
+                exception.getMessage());
+    }
+
+    /**
+     * Проверяет, что возможно купить последний пробукт
+     */
+    @Test
+    public void testBuyLastProduct() throws BuyException {
+        Cart cart = shoppingService.getCart(customer);
+        Product product = new Product("milk", 1);
+        cart.add(product, 1);
+        boolean answer = shoppingService.buy(cart);
+
+        Assertions.assertTrue(answer);
+        Mockito.verify(productDaoMock, Mockito.times(1))
+                .save(product);
+    }
+
+    /**
+     * Проверяет, что корзина пуста после покупки
+     */
+    @Test
+    public void testCartIsEmptyAfterBuy() throws BuyException {
+        Cart cart = shoppingService.getCart(customer);
+        Product product1 = new Product("milk", 3);
+        Product product2 = new Product("bread", 2);
+
+        cart.add(product1, 2);
+        cart.add(product2, 1);
+        shoppingService.buy(cart);
+
+        Assertions.assertEquals(0, cart.getProducts().size());
+    }
+
+    /**
      * Проверяет корректность работы метода buy при правильных данных
      * @throws BuyException ошибка,если покупка невозможна
      */
@@ -84,59 +152,6 @@ public class ShoppingServiceTest {
                 exception.getMessage());
 
         Mockito.verify(productDaoMock, Mockito.never()).save(Mockito.any(Product.class));
-    }
-
-    /**
-     * Проверяет, что при получении корзины возвращается одна и та же корзина
-     */
-    @Test
-    public void testGetCart() {
-        Cart cart1 = shoppingService.getCart(customer);
-        Cart cart2 = shoppingService.getCart(customer);
-        Assertions.assertEquals(cart1, cart2, "Метод возвращает разные корзины");
-    }
-
-    /**
-     * Проверяет, что корзина пуста после покупки
-     */
-    @Test
-    public void testCartIsEmptyAfterBuy() throws BuyException {
-        Cart cart = shoppingService.getCart(customer);
-        Product product1 = new Product("milk", 3);
-        Product product2 = new Product("bread", 2);
-
-        cart.add(product1, 2);
-        cart.add(product2, 1);
-        shoppingService.buy(cart);
-
-        Assertions.assertEquals(0, cart.getProducts().size());
-    }
-
-    /**
-     * Проверяет, что возможно купить последний пробукт
-     */
-    @Test
-    public void testBuyLastProduct() throws BuyException {
-        Cart cart = shoppingService.getCart(customer);
-        Product product = new Product("milk", 1);
-        cart.add(product, 1);
-        boolean answer = shoppingService.buy(cart);
-
-        Assertions.assertTrue(answer);
-        Mockito.verify(productDaoMock, Mockito.times(1))
-                .save(product);
-    }
-
-    /**
-     * Проверяет, что нелья добавить в корзину отрицательное количество продуктов
-     */
-    @Test
-    public void testAddNegativeNumberOfProducts() {
-        Cart cart = shoppingService.getCart(customer);
-        Product product = new Product("milk", 3);
-        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
-                () -> cart.add(product, -2));
-        Assertions.assertEquals("Неверный формат числа продуктов", exception.getMessage());
     }
 
     /**
